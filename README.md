@@ -1,14 +1,8 @@
-# Fuse.js
+# fuse-immutable
 
-*Lightweight fuzzy-search, in JavaScript, with zero dependencies*
+*Lightweight fuzzy-search for Immutable.js (Based on [Fuse.js by krisk](https://github.com/krisk/Fuse))*
 
-[![npm version](https://badge.fury.io/js/fuse.js.svg)](https://www.npmjs.com/package/fuse.js)
-[![Build Status](https://secure.travis-ci.org/krisk/Fuse.svg?branch=master)](http://travis-ci.org/krisk/Fuse)
-[![Join the chat at https://gitter.im/fuselib/Lobby](https://badges.gitter.im/fuselib/Lobby.svg)](https://gitter.im/fuselib/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Donate](https://img.shields.io/badge/Donate-PayPal-red.svg)](https://www.paypal.me/kirorisk)
-[![Donate](https://img.shields.io/badge/patreon-donate-red.svg)](https://www.patreon.com/fusejs)
-
-[![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/fold_left.svg?style=social&label=Follow%20%40kirorisk)](https://twitter.com/kirorisk)
+[![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/fold_left.svg?style=social&label=Follow%20%40chadallenwatson)](https://twitter.com/chadallenwatson)
 
 Check out the [demo & usage](http://fusejs.io/)
 
@@ -16,21 +10,54 @@ Check out the [demo & usage](http://fusejs.io/)
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [Where-to-post summary](#where-to-post-summary)
+- [How is this different than Fuse.js?](#how-is-this-different-than-fuse-js)
 - [Contributing](#contributing)
   - [Coding conventions](#coding-conventions)
   - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Where-to-post summary
+## How is this different than Fuse.js?
 
-- How do I? -- [StackOverflow](https://stackoverflow.com/questions/ask?tags=fuse.js)
-- I got this error, why? -- [StackOverflow](https://stackoverflow.com/questions/ask?tags=fuse.js)
-- I got this error and I'm sure it's a bug -- file an [issue](https://github.com/krisk/Fuse/issues)
-- I have an idea/request -- file an [issue](https://github.com/krisk/Fuse/issues)
-- You're a horrible human being -- send me an [email](mailto:kirollos+github@gmail.com)
-- You're awesome -- support Fuse.js development with [Patreon](https://www.patreon.com/fusejs)/[PayPal](https://www.paypal.me/kirorisk)
+The obvious difference is that it works with Immutable.js data. Instead of an array for your `list` argument, pass in an Immutable.List.
+
+One other key difference is the results when using `tokenize` and `matchAllTokens` together. Fuse.js will return items that have a single value that matches all tokens. fuse-immutable returns items where each token can be found *somewhere* in the item.
+
+```javascript
+import { fromJS } from 'immutable'
+import Fuse from 'fuse'
+
+const list = fromJS([{
+  title: 'Jackson',
+  author: 'Steve Pearson',
+  tags: ['Kevin Wong', 'Victoria Adam', 'John Smith']
+}, {
+  title: 'The life of Jane',
+  author: 'John Smith',
+  tags: ['Jane', 'Jackson', 'Sam']
+}, {
+  title: 'The life of John',
+  author: 'Jane Wong',
+  tags: ['Victoria Adam', 'John Pearson']
+}])
+
+const options = {
+  threshold: 0,
+  tokenize: true,
+  matchAllTokens: true,
+}
+
+const fuse = new Fuse(list, options)
+
+console.log(fuse.search('Jackson Wong'))
+// List [
+//   Map {
+//    "title": "Jackson",
+//    "author": "Steve Pearson",
+//    "tags": List [ "Kevin Wong", "Victoria Adam", "John Smith" ]
+//   }
+//  ]
+```
 
 ## Contributing
 
