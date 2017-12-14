@@ -1,15 +1,12 @@
 {
   "name": "fuse-immutable",
-  "author": {
-    "name": "Chad Watson",
-    "email": "chadwatsn@gmail.com"
-  },
+  "author": "Chad Watson <chadwatsn@gmail.com>",
   "version": "1.0.0",
   "description": "Lightweight fuzzy-search for Immutable.js (Based on Fuse.js by krisk)",
-  "license": "Apache",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chadwatson/fuse-immutable.git"
+    "url": "git+https://github.com/chadwatson/fuse-immutable.git"
   },
   "dependencies": {
     "immutable": "^3.8.2"
@@ -33,5 +30,12 @@
     "babel-preset-stage-2": "6.24.1",
     "vows": "0.5.x",
     "webpack": "^2.4.1"
+  },
+  "bugs": {
+    "url": "https://github.com/chadwatson/fuse-immutable/issues"
+  },
+  "homepage": "https://github.com/chadwatson/fuse-immutable#readme",
+  "directories": {
+    "test": "test"
   }
 }
