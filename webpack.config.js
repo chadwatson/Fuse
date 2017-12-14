@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const package = require('./package.json')
 
-const LIBRARY_NAME = 'fuse'
+const LIBRARY_NAME = 'fuse-immutable'
 const VERSION = package.version
 const AUTHOR = package.author
 const HOMEPAGE = package.homepage
@@ -17,8 +17,7 @@ let plugins = [
   new webpack.BannerPlugin({
     banner: copyright
       .replace('{VERSION}', `v${VERSION}`)
-      .replace('{AUTHOR_URL}', `${AUTHOR.url}`)
-      .replace('{HOMEPAGE}', `${HOMEPAGE}`),
+      .replace('{AUTHOR_URL}', `${AUTHOR.url}`),
     entryOnly: true
   })
 ]

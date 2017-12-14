@@ -1,27 +1,25 @@
 {
-  "name": "fuse.js",
+  "name": "fuse-immutable",
   "author": {
-    "name": "Kirollos Risk",
-    "email": "kirollos@gmail.com",
-    "url": "http://kiro.me"
+    "name": "Chad Watson",
+    "email": "chadwatsn@gmail.com"
   },
-  "version": "3.2.0",
-  "description": "Lightweight fuzzy-search",
+  "version": "1.0.0",
+  "description": "Lightweight fuzzy-search for Immutable.js (Based on Fuse.js by krisk)",
   "license": "Apache",
-  "types": "./index.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/krisk/Fuse.git"
+    "url": "https://github.com/chadwatson/fuse-immutable.git"
   },
-  "homepage": "http://fusejs.io",
   "dependencies": {
     "immutable": "^3.8.2"
   },
   "keywords": [
     "fuzzy",
-    "bitap"
+    "bitap",
+    "immutable"
   ],
-  "main": "dist/fuse.js",
+  "main": "dist/fuse-immutable.js",
   "scripts": {
     "test": "vows test/**.js",
     "build": "WEBPACK_ENV=build webpack && WEBPACK_ENV=dev webpack",
