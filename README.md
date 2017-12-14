@@ -4,8 +4,6 @@
 
 [![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/fold_left.svg?style=social&label=Follow%20%40chadallenwatson)](https://twitter.com/chadallenwatson)
 
-Check out the [demo & usage](http://fusejs.io/)
-
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
