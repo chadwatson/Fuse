@@ -1,4 +1,4 @@
-const { List, Map, fromJS } = require('immutable')
+const { OrderedMap, List, Map, Set, fromJS } = require('immutable')
 const Bitap = require('./bitap')
 const isArray = require('./helpers/is_array')
 const deepValue = require('./helpers/deep_value')
@@ -102,7 +102,6 @@ class Fuse {
     const tokenSearchers = tokenize ? pattern.split(tokenSeparator).map((token) => this._createSearcher(token)) : []
     const fullSearcher = this._createSearcher(pattern)
 
-    this.resultIndices = {}
     const results = this._computeScore(this._search(tokenSearchers, fullSearcher))
 
     if (shouldSort) {
@@ -117,26 +116,36 @@ class Fuse {
   }
 
   _search (tokenSearchers = [], fullSearcher) {
+    const { tokenize, matchAllTokens } = this.options
     const list = this.list
 
     // Check the first item in the list, if it's a string, then we assume
     // that every item in the list is also a string, and thus it's a flattened array.
     if (typeof list.first() === 'string') {
-      return list.reduce((results, value, index) => this._analyze({
-        key: '',
-        value,
-        record: index,
-        index,
-        results,
-        tokenSearchers,
-        fullSearcher,
-      }), List())
+      return list.reduce((results, value, index) => {
+        const resultsWithItemResult = this._analyze({
+          key: '',
+          value,
+          record: index,
+          index,
+          results,
+          tokenSearchers,
+          fullSearcher,
+        })
+
+        const matchedTokens = resultsWithItemResult.get(index) ? resultsWithItemResult.getIn([index, 'matchedTokens']).size : 0
+        if (tokenize && matchAllTokens && matchedTokens < tokenSearchers.length) {
+          return results
+        }
+
+        return resultsWithItemResult
+      }, OrderedMap()).toList()
     }
 
     // Otherwise, the first item is an Object (hopefully), and thus the searching
     // is done on the values of the keys of each item.
-    return list.reduce((accumulation, item, itemIndex) =>
-      this.options.keys.reduce((results, key, keyIndex) => this._analyze({
+    return list.reduce((accumulation, item, itemIndex) => {
+      const accumulationWithItemResult = this.options.keys.reduce((results, key, keyIndex) => this._analyze({
         key: typeof key !== 'string' ? key.name : key,
         value: this.options.getFn(item, typeof key !== 'string' ? key.name : key),
         record: item,
@@ -144,10 +153,18 @@ class Fuse {
         results,
         tokenSearchers,
         fullSearcher,
-      }), accumulation), List())
+      }), accumulation)
+
+      const matchedTokens = accumulationWithItemResult.get(itemIndex) ? accumulationWithItemResult.getIn([itemIndex, 'matchedTokens']).size : 0
+      if (tokenize && matchAllTokens && matchedTokens < tokenSearchers.length) {
+        return accumulation
+      }
+
+      return accumulationWithItemResult
+    }, OrderedMap()).toList()
   }
 
-  _analyze ({ key, arrayIndex = -1, value, record, index, tokenSearchers = [], fullSearcher, results = List() }) {
+  _analyze ({ key, arrayIndex = -1, value, record, index, tokenSearchers = [], fullSearcher, results = OrderedMap() }) {
     // Check if the textvalue can be searched
     if (value === undefined || value === null) {
       return results
@@ -182,10 +199,11 @@ class Fuse {
     return results
   }
 
-  _analyzeString ({ key, arrayIndex = -1, value, record, index, tokenSearchers = [], fullSearcher, results = List() }) {
+  _analyzeString ({ key, arrayIndex = -1, value, record, index, tokenSearchers = [], fullSearcher, results = OrderedMap() }) {
     let exists = false
     let numTextMatches = 0
     let averageScore = -1
+    let matchedTokens = []
 
     this._log(`\nKey: ${key === '' ? '-' : key}`)
 
@@ -204,6 +222,7 @@ class Fuse {
           if (tokenSearchResult.isMatch) {
             exists = true
             hasMatchInText = true
+            matchedTokens.push(tokenSearcher.pattern)
             return wordScores.push(tokenSearchResult.score)
           }
           
@@ -230,11 +249,7 @@ class Fuse {
 
     this._log('Score average:', finalScore)
 
-    const checkTextMatches = (this.options.tokenize && this.options.matchAllTokens) ? numTextMatches >= tokenSearchers.length : true
-
-    this._log(`\nCheck Matches: ${checkTextMatches}`)
-
-    if ((exists || mainSearchResult.isMatch) && checkTextMatches) {
+    if (exists || mainSearchResult.isMatch) {
       const recordOutput = fromJS({
         key,
         arrayIndex,
@@ -243,15 +258,18 @@ class Fuse {
         matchedIndices: mainSearchResult.matchedIndices,
       })
 
-      const existingPosition = this.resultIndices[index]
-      if (existingPosition !== undefined) {
-        return results.updateIn([existingPosition, 'output'], (output) => output.push(recordOutput))
+      if (results.get(index)) {
+        return results.update(index, (result) =>
+          result.withMutations((mutableResult) =>
+            mutableResult
+              .update('output', (output) => output.push(recordOutput))
+              .update('matchedTokens', (currentMatchedTokens) => currentMatchedTokens.union(Set(matchedTokens)))))
       }
 
-      this.resultIndices[index] = results.size
-      return results.push(fromJS({
+      return results.set(index, fromJS({
         item: record,
         output: [recordOutput],
+        matchedTokens: Set.of(...matchedTokens),
       }))
     }
 
