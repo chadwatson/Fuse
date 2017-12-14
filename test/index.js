@@ -87,7 +87,7 @@ vows.describe('List of books - searching "title" and "author"').addBatch({
         var result = fuse.search('Jeeves Woodhouse')
         return result
       },
-      'we get a list of containing 5 items': function (result) {
+      'we get a list of containing 6 items': function (result) {
         assert.equal(result.size, 6)
       },
       'which are all the books written by "P.D. Woodhouse"': function (result) {
@@ -866,7 +866,7 @@ vows.describe('Search with match all tokens: ["AustralianSuper - Corporate Divis
         assert.notEqual(result.indexOf(3), -1)
       }
     },
-    'When searching for the term "Australia corporate" without "matchAllTokens" set to false': {
+    'When searching for the term "Australia corporate" with "matchAllTokens" set to false': {
       topic: function (items) {
         var fuse = new Fuse(items, {
           verbose: verbose,
@@ -1126,6 +1126,74 @@ vows.describe('Weighted search with exact match in arrays').addBatch({
       'We get the value { title: "Jackson", tags: "Kevin Wong", ... }': function (result) {
         assert.deepEqual(result.first().get('title'), 'Jackson');
         assert.deepEqual(result.first().get('tags'), List.of('Kevin Wong', 'Victoria Adam', 'John Smith'));
+      },
+    }
+  }
+}).export(module);
+
+vows.describe('Tokenize and matchAllTokens for Maps').addBatch({
+  'Books:': {
+    topic: function() {
+      var items = fromJS([{
+        title: "Jackson",
+        author: 'Steve Pearson',
+        tags: ['Kevin Wong', 'Victoria Adam', 'John Smith']
+      }, {
+        title: 'The life of Jane',
+        author: 'John Smith',
+        tags: ['Jane', 'Jackson', 'Sam']
+      }, {
+        title: 'The life of John',
+        author: 'Jane Wong',
+        tags: ['Victoria Adam', 'John Pearson']
+      }])
+      return items
+    },
+    'When searching for the term "Jackson Wong" and searching all keys': {
+      topic: function (items) {
+        var options = {
+          keys: ['title', 'author', 'tags'],
+          tokenize: true,
+          matchAllTokens: true,
+          threshold: 0,
+          verbose: verbose,
+        }
+        var fuse = new Fuse(items, options)
+        var result = fuse.search('Jackson Wong')
+        return result
+      },
+      'We get a single value in the results': function (result) {
+        assert.equal(result.size, 1)
+      },
+      'We get the value { title: "Jackson", author: "Steve Pearson", tags: "Kevin Wong", ... }': function (result) {
+        assert.equal(result.first().get('title'), 'Jackson');
+        assert.equal(result.first().get('author'), 'Steve Pearson');
+        assert.deepEqual(result.first().get('tags'), List.of('Kevin Wong', 'Victoria Adam', 'John Smith'));
+      },
+    },
+    'When searching for the term "Victoria Pearson" and searching all keys': {
+      topic: function (items) {
+        var options = {
+          keys: ['title', 'author', 'tags'],
+          tokenize: true,
+          matchAllTokens: true,
+          threshold: 0,
+          verbose: verbose,
+        }
+        var fuse = new Fuse(items, options)
+        var result = fuse.search('Victoria Pearson')
+        return result
+      },
+      'We get a single value in the results': function (result) {
+        assert.equal(result.size, 2)
+      },
+      'We get the correct values': function (result) {
+        assert.equal(result.first().get('title'), 'Jackson');
+        assert.equal(result.first().get('author'), 'Steve Pearson');
+        assert.deepEqual(result.first().get('tags'), List.of('Kevin Wong', 'Victoria Adam', 'John Smith'));
+        assert.equal(result.getIn([1, 'title']), 'The life of John');
+        assert.equal(result.getIn([1, 'author']), 'Jane Wong');
+        assert.deepEqual(result.getIn([1, 'tags']), List.of('Victoria Adam', 'John Pearson'));
       },
     }
   }

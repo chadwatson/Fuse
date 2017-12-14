@@ -5549,8 +5549,10 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var _require = __webpack_require__(1),
+    OrderedMap = _require.OrderedMap,
     List = _require.List,
     Map = _require.Map,
+    Set = _require.Set,
     fromJS = _require.fromJS;
 
 var Bitap = __webpack_require__(2);
@@ -5660,7 +5662,6 @@ var Fuse = function () {
       }) : [];
       var fullSearcher = this._createSearcher(pattern);
 
-      this.resultIndices = {};
       var results = this._computeScore(this._search(tokenSearchers, fullSearcher));
 
       if (shouldSort) {
@@ -5681,6 +5682,9 @@ var Fuse = function () {
 
       var tokenSearchers = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
       var fullSearcher = arguments[1];
+      var _options2 = this.options,
+          tokenize = _options2.tokenize,
+          matchAllTokens = _options2.matchAllTokens;
 
       var list = this.list;
 
@@ -5688,7 +5692,7 @@ var Fuse = function () {
       // that every item in the list is also a string, and thus it's a flattened array.
       if (typeof list.first() === 'string') {
         return list.reduce(function (results, value, index) {
-          return _this2._analyze({
+          var resultsWithItemResult = _this2._analyze({
             key: '',
             value: value,
             record: index,
@@ -5697,13 +5701,20 @@ var Fuse = function () {
             tokenSearchers: tokenSearchers,
             fullSearcher: fullSearcher
           });
-        }, List());
+
+          var matchedTokens = resultsWithItemResult.get(index) ? resultsWithItemResult.getIn([index, 'matchedTokens']).size : 0;
+          if (tokenize && matchAllTokens && matchedTokens < tokenSearchers.length) {
+            return results;
+          }
+
+          return resultsWithItemResult;
+        }, OrderedMap()).toList();
       }
 
       // Otherwise, the first item is an Object (hopefully), and thus the searching
       // is done on the values of the keys of each item.
       return list.reduce(function (accumulation, item, itemIndex) {
-        return _this2.options.keys.reduce(function (results, key, keyIndex) {
+        var accumulationWithItemResult = _this2.options.keys.reduce(function (results, key, keyIndex) {
           return _this2._analyze({
             key: typeof key !== 'string' ? key.name : key,
             value: _this2.options.getFn(item, typeof key !== 'string' ? key.name : key),
@@ -5714,7 +5725,14 @@ var Fuse = function () {
             fullSearcher: fullSearcher
           });
         }, accumulation);
-      }, List());
+
+        var matchedTokens = accumulationWithItemResult.get(itemIndex) ? accumulationWithItemResult.getIn([itemIndex, 'matchedTokens']).size : 0;
+        if (tokenize && matchAllTokens && matchedTokens < tokenSearchers.length) {
+          return accumulation;
+        }
+
+        return accumulationWithItemResult;
+      }, OrderedMap()).toList();
     }
   }, {
     key: '_analyze',
@@ -5731,7 +5749,7 @@ var Fuse = function () {
           tokenSearchers = _ref2$tokenSearchers === undefined ? [] : _ref2$tokenSearchers,
           fullSearcher = _ref2.fullSearcher,
           _ref2$results = _ref2.results,
-          results = _ref2$results === undefined ? List() : _ref2$results;
+          results = _ref2$results === undefined ? OrderedMap() : _ref2$results;
 
       // Check if the textvalue can be searched
       if (value === undefined || value === null) {
@@ -5783,11 +5801,12 @@ var Fuse = function () {
           tokenSearchers = _ref3$tokenSearchers === undefined ? [] : _ref3$tokenSearchers,
           fullSearcher = _ref3.fullSearcher,
           _ref3$results = _ref3.results,
-          results = _ref3$results === undefined ? List() : _ref3$results;
+          results = _ref3$results === undefined ? OrderedMap() : _ref3$results;
 
       var exists = false;
       var numTextMatches = 0;
       var averageScore = -1;
+      var matchedTokens = [];
 
       this._log('\nKey: ' + (key === '' ? '-' : key));
 
@@ -5806,6 +5825,7 @@ var Fuse = function () {
             if (tokenSearchResult.isMatch) {
               exists = true;
               hasMatchInText = true;
+              matchedTokens.push(tokenSearcher.pattern);
               return wordScores.push(tokenSearchResult.score);
             }
 
@@ -5832,11 +5852,7 @@ var Fuse = function () {
 
       this._log('Score average:', finalScore);
 
-      var checkTextMatches = this.options.tokenize && this.options.matchAllTokens ? numTextMatches >= tokenSearchers.length : true;
-
-      this._log('\nCheck Matches: ' + checkTextMatches);
-
-      if ((exists || mainSearchResult.isMatch) && checkTextMatches) {
+      if (exists || mainSearchResult.isMatch) {
         var recordOutput = fromJS({
           key: key,
           arrayIndex: arrayIndex,
@@ -5845,17 +5861,22 @@ var Fuse = function () {
           matchedIndices: mainSearchResult.matchedIndices
         });
 
-        var existingPosition = this.resultIndices[index];
-        if (existingPosition !== undefined) {
-          return results.updateIn([existingPosition, 'output'], function (output) {
-            return output.push(recordOutput);
+        if (results.get(index)) {
+          return results.update(index, function (result) {
+            return result.withMutations(function (mutableResult) {
+              return mutableResult.update('output', function (output) {
+                return output.push(recordOutput);
+              }).update('matchedTokens', function (currentMatchedTokens) {
+                return currentMatchedTokens.union(Set(matchedTokens));
+              });
+            });
           });
         }
 
-        this.resultIndices[index] = results.size;
-        return results.push(fromJS({
+        return results.set(index, fromJS({
           item: record,
-          output: [recordOutput]
+          output: [recordOutput],
+          matchedTokens: Set.of.apply(Set, matchedTokens)
         }));
       }
 
@@ -5911,11 +5932,11 @@ var Fuse = function () {
   }, {
     key: '_format',
     value: function _format(results) {
-      var _options2 = this.options,
-          includeMatches = _options2.includeMatches,
-          includeScore = _options2.includeScore,
-          id = _options2.id,
-          getFn = _options2.getFn;
+      var _options3 = this.options,
+          includeMatches = _options3.includeMatches,
+          includeScore = _options3.includeScore,
+          id = _options3.id,
+          getFn = _options3.getFn;
 
 
       this._log('\n\nOutput:\n\n', JSON.stringify(results));
