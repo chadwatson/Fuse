@@ -1,7 +1,7 @@
 /*!
- * Fuse.js v3.2.0 - Lightweight fuzzy-search (http://fusejs.io)
+ * Fuse.js v1.0.0 - Lightweight fuzzy-search ({HOMEPAGE})
  * 
- * Copyright (c) 2012-2017 Kirollos Risk (http://kiro.me)
+ * Copyright (c) 2012-2017 Kirollos Risk (undefined)
  * All Rights Reserved. Apache Software License 2.0
  * 
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -6003,4 +6003,4 @@ module.exports = Fuse;
 /***/ })
 /******/ ]);
 });
-//# sourceMappingURL=fuse.js.map
+//# sourceMappingURL=fuse-immutable.js.map
