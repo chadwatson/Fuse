@@ -1,5 +1,5 @@
 /*!
- * Fuse.js v1.0.0 - Lightweight fuzzy-search ({HOMEPAGE})
+ * Fuse.js v1.0.1 - Lightweight fuzzy-search ({HOMEPAGE})
  * 
  * Copyright (c) 2012-2017 Kirollos Risk (undefined)
  * All Rights Reserved. Apache Software License 2.0
@@ -5939,7 +5939,7 @@ var Fuse = function () {
           getFn = _options3.getFn;
 
 
-      this._log('\n\nOutput:\n\n', JSON.stringify(results));
+      this._log('\n\nOutput:\n\n', results);
 
       var transformers = [];
 
