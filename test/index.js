@@ -1,7 +1,7 @@
 const assert = require('assert')
 const vows = require('vows')
 const { List, fromJS } = require('immutable')
-const Fuse = require('../dist/fuse')
+const Fuse = require('../dist/fuse-immutable')
 const books = require('./fixtures/books.json')
 
 const verbose = false
