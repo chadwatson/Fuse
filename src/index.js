@@ -315,7 +315,7 @@ class Fuse {
   _format (results) {
     const { includeMatches, includeScore, id, getFn } = this.options
 
-    this._log('\n\nOutput:\n\n', JSON.stringify(results))
+    this._log('\n\nOutput:\n\n', results)
 
     const transformers = []
 
