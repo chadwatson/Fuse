@@ -23,7 +23,7 @@ One other key difference is the results when using `tokenize` and `matchAllToken
 
 ```javascript
 import { fromJS } from 'immutable'
-import Fuse from 'fuse'
+import Fuse from 'fuse-immutable'
 
 const list = fromJS([{
   title: 'Jackson',
