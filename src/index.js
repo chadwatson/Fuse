@@ -201,7 +201,6 @@ class Fuse {
 
   _analyzeString ({ key, arrayIndex = -1, value, record, index, tokenSearchers = [], fullSearcher, results = OrderedMap() }) {
     let exists = false
-    let numTextMatches = 0
     let averageScore = -1
     let matchedTokens = []
 
@@ -215,13 +214,10 @@ class Fuse {
       const scores = tokenSearchers.reduce((accumulation, tokenSearcher) => {
         this._log(`\nPattern: "${tokenSearcher.pattern}"`)
 
-        let hasMatchInText = false
-
         const tokenScores = words.reduce((wordScores, word) => {
           const tokenSearchResult = tokenSearcher.search(word)
           if (tokenSearchResult.isMatch) {
             exists = true
-            hasMatchInText = true
             matchedTokens.push(tokenSearcher.pattern)
             return wordScores.push(tokenSearchResult.score)
           }
@@ -232,10 +228,6 @@ class Fuse {
           
           return wordScores
         }, List())
-
-        if (hasMatchInText) {
-          numTextMatches += 1
-        }
 
         return accumulation.concat(tokenScores)
       }, List())
