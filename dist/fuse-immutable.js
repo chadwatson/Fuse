@@ -1,5 +1,5 @@
 /*!
- * Fuse.js v1.0.2 - Lightweight fuzzy-search ({HOMEPAGE})
+ * Fuse.js v2.0.0 - Lightweight fuzzy-search ({HOMEPAGE})
  * 
  * Copyright (c) 2012-2017 Kirollos Risk (undefined)
  * All Rights Reserved. Apache Software License 2.0
@@ -6486,7 +6486,7 @@ var Fuse = function () {
       if (shouldSort) {
         return this._format(this._sort(results));
       }
-
+      console.log('RESULTS', results);
       return this._format(results);
     }
   }, {
