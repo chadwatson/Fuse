@@ -1,7 +1,7 @@
 {
   "name": "fuse-immutable",
   "author": "Chad Watson <chadwatsn@gmail.com>",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Lightweight fuzzy-search for Immutable.js (Based on Fuse.js by krisk)",
   "license": "Apache-2.0",
   "repository": {
@@ -9,7 +9,7 @@
     "url": "git+https://github.com/chadwatson/fuse-immutable.git"
   },
   "dependencies": {
-    "immutable": "^3.8.2"
+    "immutable": "4.0.0-rc.9"
   },
   "keywords": [
     "fuzzy",

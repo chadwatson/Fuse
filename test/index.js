@@ -1,6 +1,6 @@
 const assert = require('assert')
 const vows = require('vows')
-const { List, fromJS } = require('immutable')
+const { List, OrderedMap, fromJS, Seq, isKeyed } = require('immutable')
 const Fuse = require('../dist/fuse-immutable')
 const books = require('./fixtures/books.json')
 
@@ -23,8 +23,8 @@ vows.describe('Flat list of strings: ["Apple", "Orange", "Banana"]').addBatch({
       'we get a list of containing 1 item, which is an exact match': function (result) {
         assert.equal(result.size, 1)
       },
-      'whose value is the index 0, representing ["Apple"]': function (result) {
-        assert.equal(result.first(), 0)
+      'whose value is "Apple"': function (result) {
+        assert.equal(result.first(), 'Apple')
       },
     },
     'When performing a fuzzy search for the term "ran"': {
@@ -35,9 +35,9 @@ vows.describe('Flat list of strings: ["Apple", "Orange", "Banana"]').addBatch({
       'we get a list of containing 2 items: [1, 2]': function (result) {
         assert.equal(result.size, 2)
       },
-      'whose values represent the indices of ["Orange", "Banana"]': function (result) {
-        assert.equal(result.first(), 1)
-        assert.equal(result.get(1), 2)
+      'whose values are "Orange" and "Banana"': function (result) {
+        assert.equal(result.first(), 'Orange')
+        assert.equal(result.get(1), 'Banana')
       },
     },
     'When performing a fuzzy search for the term "nan"': {
@@ -48,9 +48,9 @@ vows.describe('Flat list of strings: ["Apple", "Orange", "Banana"]').addBatch({
       'we get a list of containing 2 items: [2, 1]': function (result) {
         assert.equal(result.size, 2)
       },
-      'whose values represent the indices of ["Banana", "Orange"]': function (result) {
-        assert.equal(result.first(), 2)
-        assert.equal(result.get(1), 1)
+      'whose values are "Banana" and "Orange"': function (result) {
+        assert.equal(result.first(), 'Banana')
+        assert.equal(result.get(1), 'Orange')
       },
     }
   }
@@ -91,15 +91,15 @@ vows.describe('List of books - searching "title" and "author"').addBatch({
         assert.equal(result.size, 6)
       },
       'which are all the books written by "P.D. Woodhouse"': function (result) {
-        var output = fromJS([
+        var output = Seq(fromJS([
           { title: 'Right Ho Jeeves', author: 'P.D. Woodhouse' },
           { title: 'Thank You Jeeves', author: 'P.D. Woodhouse' },
           { title: 'The Code of the Wooster', author: 'P.D. Woodhouse' },
           { title: 'The Lock Artist', author: 'Steve Hamilton' },
           { title: 'the wooster code', author: 'aa' },
           { title: 'The code of the wooster', author: 'aa' }
-        ])
-        assert.deepEqual(result, output)
+        ]))
+        assert.equal(output.equals(result), true)
       }
     },
     'When searching for the term "brwn"': {
@@ -277,7 +277,7 @@ vows.describe('Include score in result list: ["Apple", "Orange", "Banana"]').add
         assert.equal(result.size, 1)
       },
       'whose value and score exist': function (result) {
-        assert.equal(result.first().get('item'), 0)
+        assert.equal(result.first().get('item'), 'Apple')
         assert.equal(result.first().get('score'), 0)
       },
     },
@@ -289,9 +289,9 @@ vows.describe('Include score in result list: ["Apple", "Orange", "Banana"]').add
       'we get a list of containing 2 items': function (result) {
         assert.equal(result.size, 2)
       },
-      'whose items represent the indices, and have non-zero scores': function (result) {
-        assert.equal(result.first().get('item'), 1)
-        assert.equal(result.getIn([1, 'item']), 2)
+      'whose items are the matched values, and have non-zero scores': function (result) {
+        assert.equal(result.first().get('item'), 'Orange')
+        assert.equal(result.getIn([1, 'item']), 'Banana')
         assert.isNotZero(result.first().get('score'))
         assert.isNotZero(result.getIn([1, 'score']))
       },
@@ -455,7 +455,6 @@ vows.describe('Recurse into arrays').addBatch({
         const matches = result.first().get('matches')
         assert.equal(matches.first().equals(fromJS({
           key: 'tags',
-          arrayIndex: 1,
           value: 'nonfiction',
           indices: [[0, 9]]
         })), true)
@@ -574,8 +573,8 @@ vows.describe('Set new list on Fuse').addBatch({
       'we get a list of containing 1 item, which is an exact match': function (result) {
         assert.equal(result.size, 1)
       },
-      'whose value is the index 0, representing ["Lettuce"]': function (result) {
-        assert.equal(result.first(), 1)
+      'whose value is "Lettuce"': function (result) {
+        assert.equal(result.first(), 'Lettuce')
       },
     }
   }
@@ -665,8 +664,8 @@ vows.describe('Searching list').addBatch({
       'we get a list containing 4 items': function (result) {
         assert.equal(result.size, 4)
       },
-      'whose first value is the index of "Bo hamlet"': function (result) {
-        assert.equal(result.first().get('item'), 2)
+      'whose first value is "Bo hamlet"': function (result) {
+        assert.equal(result.first().get('item'), 'Bo hamlet')
       }
     }
   }
@@ -842,9 +841,9 @@ vows.describe('Search with match all tokens: ["AustralianSuper - Corporate Divis
       'we get a list of containing 2 items': function (result) {
         assert.equal(result.size, 2)
       },
-      'whose items represent the indices of "AustralianSuper - Corporate Division" and "IGT (Australia) Pty Ltd Superannuation Fund"': function (result) {
-        assert.notEqual(result.indexOf(0), -1)
-        assert.notEqual(result.indexOf(4), -1)
+      'whose items are "AustralianSuper - Corporate Division" and "IGT (Australia) Pty Ltd Superannuation Fund"': function (result) {
+        assert.equal(result.first(), 'AustralianSuper - Corporate Division')
+        assert.equal(result.get(1), 'IGT (Australia) Pty Ltd Superannuation Fund')
       }
     },
     'When searching for the term "corporate"': {
@@ -859,11 +858,11 @@ vows.describe('Search with match all tokens: ["AustralianSuper - Corporate Divis
       'we get a list of containing 4 items': function (result) {
         assert.equal(result.size, 4)
       },
-      'whose items represent the indices of "AustralianSuper - Corporate Division", "Aon Master Trust - Corporate Super", "Promina Corporate Superannuation Fund" and "Workforce Superannuation Corporate"': function (result) {
-        assert.notEqual(result.indexOf(0), -1)
-        assert.notEqual(result.indexOf(1), -1)
-        assert.notEqual(result.indexOf(2), -1)
-        assert.notEqual(result.indexOf(3), -1)
+      'whose items are "AustralianSuper - Corporate Division", "Aon Master Trust - Corporate Super", "Promina Corporate Superannuation Fund" and "Workforce Superannuation Corporate"': function (result) {
+        assert.notEqual(result.get('AustralianSuper - Corporate Division'), -1)
+        assert.notEqual(result.get('Aon Master Trust - Corporate Super'), -1)
+        assert.notEqual(result.get('Promina Corporate Superannuation Fund'), -1)
+        assert.notEqual(result.get('Workforce Superannuation Corporate'), -1)
       }
     },
     'When searching for the term "Australia corporate" with "matchAllTokens" set to false': {
@@ -879,12 +878,12 @@ vows.describe('Search with match all tokens: ["AustralianSuper - Corporate Divis
       'we get a list of containing 5 items': function (result) {
         assert.equal(result.size, 5)
       },
-      'whose items represent the indices of "AustralianSuper - Corporate Division", "Aon Master Trust - Corporate Super", "Promina Corporate Superannuation Fund", "Workforce Superannuation Corporate" and "IGT (Australia) Pty Ltd Superannuation Fund"': function (result) {
-        assert.notEqual(result.indexOf(0), -1)
-        assert.notEqual(result.indexOf(1), -1)
-        assert.notEqual(result.indexOf(2), -1)
-        assert.notEqual(result.indexOf(3), -1)
-        assert.notEqual(result.indexOf(4), -1)
+      'whose items are "AustralianSuper - Corporate Division", "Aon Master Trust - Corporate Super", "Promina Corporate Superannuation Fund", "Workforce Superannuation Corporate" and "IGT (Australia) Pty Ltd Superannuation Fund"': function (result) {
+        assert.notEqual(result.get('AustralianSuper - Corporate Division'), -1)
+        assert.notEqual(result.get('Aon Master Trust - Corporate Super'), -1)
+        assert.notEqual(result.get('Promina Corporate Superannuation Fund'), -1)
+        assert.notEqual(result.get('Workforce Superannuation Corporate'), -1)
+        assert.notEqual(result.get('IGT (Australia) Pty Ltd Superannuation Fund'), -1)
       }
     },
     'When searching for the term "Australia corporate" with "matchAllTokens" set to true': {
@@ -900,8 +899,8 @@ vows.describe('Search with match all tokens: ["AustralianSuper - Corporate Divis
       'we get a list of containing 1 item': function (result) {
         assert.equal(result.size, 1)
       },
-      'whose item represents the index of "AustralianSuper - Corporate Division"': function (result) {
-        assert.notEqual(result.indexOf(0), -1)
+      'whose item is "AustralianSuper - Corporate Division"': function (result) {
+        assert.equal(result.get(0), 'AustralianSuper - Corporate Division')
       }
     }
   }
@@ -1198,3 +1197,25 @@ vows.describe('Tokenize and matchAllTokens for Maps').addBatch({
     }
   }
 }).export(module);
+
+vows.describe('OrderedMap of strings: OrderedMap([["a", "Apple"], ["o", "Orange"], ["b", "Banana"]])').addBatch({
+  'Flat:': {
+    topic: function() {
+      var fruits = OrderedMap([["a", "Apple"], ["o", "Orange"], ["b", "Banana"]])
+      var fuse = new Fuse(fruits, {
+        verbose: verbose
+      })
+      return fuse
+    },
+    'When searching for the term "Apple"': {
+      topic: function (fuse) {
+        var result = fuse.search('Apple')
+        return result
+      },
+      'we get a keyed Seq': function (result) {
+        assert.equal(Seq.isSeq(result), true)
+        assert.equal(isKeyed(result), true)
+      },
+    },
+  }
+}).export(module)
