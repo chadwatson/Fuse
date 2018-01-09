@@ -9,7 +9,7 @@
     "url": "git+https://github.com/chadwatson/fuse-immutable.git"
   },
   "dependencies": {
-    "immutable": "^3.8.2"
+    "immutable": "4.0.0-rc.9"
   },
   "keywords": [
     "fuzzy",

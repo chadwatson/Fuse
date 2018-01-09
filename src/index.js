@@ -1,4 +1,4 @@
-const { OrderedMap, List, Map, Set, fromJS } = require('immutable')
+const { List, Map, Set, Seq, fromJS } = require('immutable')
 const Bitap = require('./bitap')
 const isArray = require('./helpers/is_array')
 const deepValue = require('./helpers/deep_value')
@@ -115,91 +115,63 @@ class Fuse {
     return new Bitap(pattern, this.options)
   }
 
+  _searchCollectionOfStrings (tokenSearchers, fullSearcher) {
+    return Seq(this.list)
+      .filter((value) => typeof value === 'string')
+      .map((value) => this._analyzeString({
+        key: '',
+        value,
+        tokenSearchers,
+        fullSearcher,
+      }))
+      .map((result) => Map({
+        item: result.get('value'),
+        output: List.of(result),
+        matchedTokens: result.get('matchedTokens'),
+      }))
+      .filter((item) => item.getIn(['output', 0, 'isMatch']))
+  }
+
+  _searchCollectionOfMaps (tokenSearchers, fullSearcher) {
+    return Seq(this.list).map((item) =>
+      Seq(this.options.keys)
+        .map((key) => typeof key !== 'string' ? key.name : key)
+        .map((key) => [key, this.options.getFn(item, key)])
+        .filter(([, value]) => value !== null && value !== undefined)
+        .map(([key, value]) => [key, typeof value === 'string' ? List.of(value) : value])
+        .map(([key, values]) =>
+          Seq(values)
+            .map((value) => this._analyzeString({ key, value, tokenSearchers, fullSearcher }))
+            .filter((result) => result.get('isMatch')))
+            .toList()
+        .reduce((keysResults, keyResults) =>
+          keysResults.withMutations((mutableKeysResults) =>
+              mutableKeysResults
+                .update('output', (output) => output.concat(keyResults))
+                .update('matchedTokens', (matchedTokens) =>
+                  Seq(keyResults).reduce(
+                    (accumulation, result) => accumulation.union(result.get('matchedTokens')),
+                    matchedTokens
+                  )))
+        , Map({ item, output: List(), matchedTokens: Set() })))
+        .filterNot((result) => result.get('output').isEmpty())
+  }
+
   _search (tokenSearchers = [], fullSearcher) {
     const { tokenize, matchAllTokens } = this.options
     const list = this.list
+    const results = typeof list.first() === 'string'
+      ? this._searchCollectionOfStrings(tokenSearchers, fullSearcher)
+      : this._searchCollectionOfMaps(tokenSearchers, fullSearcher)
 
-    // Check the first item in the list, if it's a string, then we assume
-    // that every item in the list is also a string, and thus it's a flattened array.
-    if (typeof list.first() === 'string') {
-      return list.reduce((results, value, index) => {
-        const resultsWithItemResult = this._analyze({
-          key: '',
-          value,
-          record: index,
-          index,
-          results,
-          tokenSearchers,
-          fullSearcher,
-        })
-
-        const matchedTokens = resultsWithItemResult.get(index) ? resultsWithItemResult.getIn([index, 'matchedTokens']).size : 0
-        if (tokenize && matchAllTokens && matchedTokens < tokenSearchers.length) {
-          return results
-        }
-
-        return resultsWithItemResult
-      }, OrderedMap()).toList()
-    }
-
-    // Otherwise, the first item is an Object (hopefully), and thus the searching
-    // is done on the values of the keys of each item.
-    return list.reduce((accumulation, item, itemIndex) => {
-      const accumulationWithItemResult = this.options.keys.reduce((results, key, keyIndex) => this._analyze({
-        key: typeof key !== 'string' ? key.name : key,
-        value: this.options.getFn(item, typeof key !== 'string' ? key.name : key),
-        record: item,
-        index: itemIndex,
-        results,
-        tokenSearchers,
-        fullSearcher,
-      }), accumulation)
-
-      const matchedTokens = accumulationWithItemResult.get(itemIndex) ? accumulationWithItemResult.getIn([itemIndex, 'matchedTokens']).size : 0
-      if (tokenize && matchAllTokens && matchedTokens < tokenSearchers.length) {
-        return accumulation
-      }
-
-      return accumulationWithItemResult
-    }, OrderedMap()).toList()
-  }
-
-  _analyze ({ key, arrayIndex = -1, value, record, index, tokenSearchers = [], fullSearcher, results = OrderedMap() }) {
-    // Check if the textvalue can be searched
-    if (value === undefined || value === null) {
-      return results
-    }
-
-    if (typeof value === 'string') {
-      return this._analyzeString({
-        key,
-        arrayIndex,
-        value,
-        record,
-        index,
-        tokenSearchers,
-        fullSearcher,
-        results,
-      })
-    }
-
-    if (List.isList(value)) {
-      return value.reduce((accumulation, item, i) => this._analyze({
-        key,
-        arrayIndex: i,
-        value: item,
-        record,
-        index,
-        results: accumulation,
-        tokenSearchers,
-        fullSearcher,
-      }), results)
+    if (tokenize && matchAllTokens) {
+      return results.filter((item) => item.get('matchedTokens').size === tokenSearchers.length)
     }
 
     return results
   }
 
-  _analyzeString ({ key, arrayIndex = -1, value, record, index, tokenSearchers = [], fullSearcher, results = OrderedMap() }) {
+  _analyzeString ({ key, arrayIndex = -1, value, tokenSearchers = [], fullSearcher }) {
     let exists = false
     let averageScore = -1
     let matchedTokens = []
@@ -241,31 +213,15 @@ class Fuse {
 
     this._log('Score average:', finalScore)
 
-    if (exists || mainSearchResult.isMatch) {
-      const recordOutput = fromJS({
-        key,
-        arrayIndex,
-        value,
-        score: finalScore,
-        matchedIndices: mainSearchResult.matchedIndices,
-      })
-
-      if (results.get(index)) {
-        return results.update(index, (result) =>
-          result.withMutations((mutableResult) =>
-            mutableResult
-              .update('output', (output) => output.push(recordOutput))
-              .update('matchedTokens', (currentMatchedTokens) => currentMatchedTokens.union(Set(matchedTokens)))))
-      }
-
-      return results.set(index, fromJS({
-        item: record,
-        output: [recordOutput],
-        matchedTokens: Set.of(...matchedTokens),
-      }))
-    }
-
-    return results
+    return fromJS({
+      key,
+      value,
+      arrayIndex,
+      isMatch: exists || mainSearchResult.isMatch,
+      score: finalScore,
+      matchedIndices: mainSearchResult.matchedIndices,
+      matchedTokens: Set.of(...matchedTokens)
+    })
   }
 
   _computeScore (results) {
